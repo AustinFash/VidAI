@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>VidAI</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self'; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; style-src * 'self' 'unsafe-inline'; connect-src * 'self';">
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; overflow: hidden; background: #000;
+      font-family: system-ui, -apple-system, sans-serif;
+      user-select: none; display: flex; flex-direction: column; height: 100%; color: #fff;
+    }
+    #header {
+      width: 100%; height: 40px; background: #111;
+      cursor: move; display: flex; align-items: center;
+      padding: 0 15px; justify-content: space-between;
+      border-bottom: 1px solid #333; z-index: 100;
+    }
+    #header h1 { font-size: 16px; margin: 0; color: #fff; }
+    #toggle-btn {
+      background: #333; border: none; color: #fff;
+      padding: 5px 12px; cursor: pointer; border-radius: 4px;
+      border: 1px solid #555;
+    }
+    #video-container {
+      flex: 1; position: relative; overflow: hidden; background: #000;
+    }
+    .video-wrapper {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden;
+    }
+    video {
+      position: absolute; top: -1px; left: -1px;
+      width: calc(100% + 2px); height: calc(100% + 2px);
+      object-fit: cover; object-position: 50% 50%;
+      transition: object-position 0.2s ease; background: #000; z-index: 1;
+    }
+    #canvas-overlay, #debug-overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; pointer-events: none;
+    }
+    #debug-overlay { z-index: 15; }
+    #status {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 5px 10px; border-radius: 5px;
+      font-size: 12px; z-index: 20;
+    }
+    #video-controls {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      background: rgba(0,0,0,0.7); padding: 10px;
+      display: flex; align-items: center; opacity: 0;
+      transition: opacity 0.3s; z-index: 50;
+      border-top: 1px solid #333;
+    }
+    #video-container:hover #video-controls { opacity: 1; }
+    #video-controls button {
+      background: #333; border: 1px solid #555; color: #fff;
+      font-size: 14px; margin-right: 10px; cursor: pointer;
+      padding: 5px 10px; border-radius: 4px; z-index: 60;
+    }
+    #video-controls input[type="range"] {
+      flex: 1; margin: 0 10px; -webkit-appearance: none;
+      height: 6px; background: #444; border-radius: 3px;
+    }
+    #video-controls input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 15px; height: 15px;
+      background: #fff; border-radius: 50%; cursor: pointer;
+    }
+    #start-play-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: flex;
+      justify-content: center; align-items: center; z-index: 25;
+    }
+    #start-play-overlay button {
+      background: #333; color: white; border: 1px solid #555;
+      font-size: 18px; padding: 15px 30px; border-radius: 50px;
+      cursor: pointer; display: flex; align-items: center;
+    }
+    #control-panel {
+      position: fixed; top: 50px; right: 20px; width: 280px;
+      background-color: rgba(0,0,0,0.9); border: 1px solid #333;
+      border-radius: 10px; padding: 15px; z-index: 100;
+      max-height: 80vh; overflow-y: auto; display: none;
+    }
+    .section-title {
+      color: #ccc; border-bottom: 1px solid #333;
+      padding-bottom: 5px; margin: 15px 0 10px;
+      font-size: 14px; text-transform: uppercase;
+    }
+    .control-group { margin-bottom: 10px; }
+    .control-group label {
+      display: flex; justify-content: space-between;
+      margin-bottom: 5px; color: #fff;
+    }
+    .control-group label .value { color: #aaa; }
+    .toggle-switch {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 10px;
+    }
+    .switch {
+      position: relative; display: inline-block;
+      width: 48px; height: 24px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #333; transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #666; }
+    input:checked + .slider:before { transform: translateX(24px); }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div id="header">
+    <h1>VidAI</h1>
+    <button id="toggle-btn">Settings</button>
+  </div>
+
+  <!-- Video container -->
+  <div id="video-container">
+    <div class="video-wrapper">
+      <video id="video" loop>
+        <source src="samples/sample.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    <canvas id="canvas-overlay"></canvas>
+    <div id="debug-overlay"></div>
+    <div id="status">Ready</div>
+
+    <!-- Start overlay -->
+    <div id="start-play-overlay">
+      <button id="play-btn">
+        <span style="margin-right:10px;font-size:24px;">▶</span> Play Video
+      </button>
+    </div>
+
+    <!-- Controls -->
+    <div id="video-controls">
+      <button id="play-pause-btn">▶</button>
+      <input type="range" id="progress-bar" min="0" value="0" step="0.1">
+      <button id="change-video-btn">Change Video</button>
+    </div>
+  </div>
+
+  <!-- Settings panel -->
+  <div id="control-panel">
+    <h2 class="section-title">Video Controls</h2>
+    <div class="control-group">
+      <label for="brightness-range">
+        Brightness <span class="value" id="brightness-value">1.0</span>
+      </label>
+      <input type="range" id="brightness-range" min="0.5" max="1.5" step="0.1" value="1">
+    </div>
+    <div class="control-group">
+      <label for="contrast-range">
+        Contrast <span class="value" id="contrast-value">1.0</span>
+      </label>
+      <input type="range" id="contrast-range" min="0.5" max="1.5" step="0.1" value="1">
+    </div>
+    <div class="control-group">
+      <label for="volume-range">
+        Volume <span class="value" id="volume-value">100%</span>
+      </label>
+      <input type="range" id="volume-range" min="0" max="1" step="0.05" value="1">
+    </div>
+
+    <h2 class="section-title">Detection Settings</h2>
+    <div class="control-group">
+      <label for="confidence-range">
+        Detection Confidence <span class="value" id="confidence-value">30%</span>
+      </label>
+      <input type="range" id="confidence-range" min="0.1" max="0.9" step="0.1" value="0.3">
+    </div>
+    <div class="toggle-switch">
+      <label>Scale With Distance</label>
+      <label class="switch">
+        <input type="checkbox" id="scale-toggle" checked><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Enhanced Detection</label>
+      <label class="switch">
+        <input type="checkbox" id="enhanced-toggle" checked><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Show Bounding Boxes</label>
+      <label class="switch">
+        <input type="checkbox" id="bounding-box-toggle"><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Window Resizing</label>
+      <label class="switch">
+        <input type="checkbox" id="resize-toggle" checked><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Debug Visualization</label>
+      <label class="switch">
+        <input type="checkbox" id="debug-toggle"><span class="slider"></span>
+      </label>
+    </div>
+
+    <h2 class="section-title">Overlay & Fullscreen</h2>
+    <div class="toggle-switch">
+      <label>Show Status Overlay</label>
+      <label class="switch">
+        <input type="checkbox" id="status-toggle" checked><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Show People Count</label>
+      <label class="switch">
+        <input type="checkbox" id="count-toggle" checked><span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-switch">
+      <label>Use Window Fullscreen</label>
+      <label class="switch">
+        <input type="checkbox" id="window-full-toggle"><span class="slider"></span>
+      </label>
+    </div>
+
+    <h2 class="section-title">Tracking Settings</h2>
+    <div class="control-group">
+      <label for="smooth-range">
+        Tracking Smoothness <span class="value" id="smooth-value">0.15</span>
+      </label>
+      <input type="range" id="smooth-range" min="0.05" max="0.5" step="0.01" value="0.15">
+    </div>
+    <div class="control-group">
+      <label for="zoom-range">
+        Base Zoom Level <span class="value" id="zoom-value">1.8</span>
+      </label>
+      <input type="range" id="zoom-range" min="1.0" max="2.5" step="0.1" value="1.8">
+    </div>
+    <div class="control-group">
+      <label for="memory-range">
+        Detection Memory <span class="value" id="memory-value">10</span>
+      </label>
+      <input type="range" id="memory-range" min="0" max="30" step="1" value="10">
+    </div>
+    <div class="control-group">
+      <label for="damping-range">
+        Motion Stability <span class="value" id="damping-value">0.85</span>
+      </label>
+      <input type="range" id="damping-range" min="0.7" max="0.95" step="0.01" value="0.85">
+    </div>
+    <div class="control-group">
+      <label for="vertical-offset">
+        Vertical Offset <span class="value" id="vertical-offset-value">-0.15</span>
+      </label>
+      <input type="range" id="vertical-offset" min="-0.3" max="0.3" step="0.05" value="-0.15">
+    </div>
+    <div class="control-group">
+      <label for="padding-range">
+        Resize Padding <span class="value" id="padding-value">1.2</span>
+      </label>
+      <input type="range" id="padding-range" min="1.0" max="2.0" step="0.1" value="1.2">
+    </div>
+  </div>
+
+  <canvas id="detection-canvas" style="display:none;"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+  <script>
+    let ipcRenderer, path;
+    try {
+      const e = require('electron');
+      ipcRenderer = e.ipcRenderer;
+      path       = require('path');
+    } catch {
+      ipcRenderer = { send:()=>{}, on:()=>{}, once:()=>{} };
+      path       = { extname:s=>s.slice(s.lastIndexOf('.')), basename:s=>s.slice(s.lastIndexOf('/')+1) };
+    }
+
+    // DOM refs
+    const video      = document.getElementById('video');
+    const canvas     = document.getElementById('canvas-overlay');
+    const debugOV    = document.getElementById('debug-overlay');
+    const ctx        = canvas.getContext('2d');
+    const statusEl   = document.getElementById('status');
+    const playBtn    = document.getElementById('play-btn');
+    const ppBtn      = document.getElementById('play-pause-btn');
+    const progBar    = document.getElementById('progress-bar');
+    const changeBtn  = document.getElementById('change-video-btn');
+    const overlay    = document.getElementById('start-play-overlay');
+    const toggleBtn  = document.getElementById('toggle-btn');
+    const panel      = document.getElementById('control-panel');
+
+    // Controls
+    const brange    = document.getElementById('brightness-range'),
+          crange    = document.getElementById('contrast-range'),
+          vrange    = document.getElementById('volume-range'),
+          confr     = document.getElementById('confidence-range'),
+          scaleT    = document.getElementById('scale-toggle'),
+          enhT      = document.getElementById('enhanced-toggle'),
+          bboxT     = document.getElementById('bounding-box-toggle'),
+          resT      = document.getElementById('resize-toggle'),
+          dbgT      = document.getElementById('debug-toggle'),
+          statT     = document.getElementById('status-toggle'),
+          cntT      = document.getElementById('count-toggle'),
+          winFT     = document.getElementById('window-full-toggle'),
+          srange    = document.getElementById('smooth-range'),
+          zrange    = document.getElementById('zoom-range'),
+          mrange    = document.getElementById('memory-range'),
+          drange    = document.getElementById('damping-range'),
+          vOffsetR  = document.getElementById('vertical-offset'),
+          padR      = document.getElementById('padding-range');
+
+    // Displays
+    const bval = document.getElementById('brightness-value'),
+          cval = document.getElementById('contrast-value'),
+          vval = document.getElementById('volume-value'),
+          confv = document.getElementById('confidence-value'),
+          sval  = document.getElementById('smooth-value'),
+          zval  = document.getElementById('zoom-value'),
+          mval  = document.getElementById('memory-value'),
+          dval  = document.getElementById('damping-value'),
+          voffv = document.getElementById('vertical-offset-value'),
+          padv  = document.getElementById('padding-value');
+
+    const detCanvas = document.getElementById('detection-canvas'),
+          detCtx    = detCanvas.getContext('2d');
+
+    // State
+    let model=null, loaded=false, loopID=null;
+    let confThresh=0.3, scaleWithDistance=true, enhanced=true;
+    let showBoxes=false, winResize=true, debugVis=false;
+    let smoothF=0.15, maxMem=10, vOffset=parseFloat(vOffsetR.value), padFactor=parseFloat(padR.value);
+    let lastDet=null, framesMem=0, prevDetected=false;
+    let inFS=false, inWinFS=false;
+    let currBounds=null, targetBounds=null;
+
+    function updateStatus(txt){
+      if(statT.checked){
+        statusEl.style.display='block';
+        statusEl.textContent=txt;
+      }
+      console.log('[Status]',txt);
+    }
+    function showCount(n){
+      if(cntT.checked){
+        statusEl.style.display='block';
+        statusEl.textContent = n>0?`People detected: ${n}`:'No people detected';
+      }
+    }
+    function applyFilters(){
+      video.style.filter = `brightness(${brange.value}) contrast(${crange.value})`;
+    }
+
+    function handleNoDet(){
+      showCount(0);
+      if(winFT.checked){
+        ipcRenderer.send('toggle-window-fullscreen');
+        inWinFS = !inWinFS;
+      } else {
+        // bump default window size bigger then reset
+        ipcRenderer.send('update-default-size',{width:1024,height:768});
+        ipcRenderer.send('reset-to-default-size');
+      }
+    }
+    function handleGain(){
+      if(inFS && document.fullscreenElement){
+        document.exitFullscreen().catch(()=>{});
+        inFS=false;
+      }
+      if(inWinFS){
+        ipcRenderer.send('toggle-window-fullscreen');
+        inWinFS=false;
+      }
+    }
+
+    // Detect pad & fallback
+    function enhancedDetect(preds){
+      if(!enhanced) return preds.filter(p=>p.class==='person'&&p.score>=confThresh);
+      let ppl = preds.filter(p=>p.class==='person'&&p.score>=confThresh);
+      if(ppl.length) return ppl;
+      ppl=preds.filter(p=>p.class==='person'&&p.score>=confThresh*0.6);
+      if(ppl.length){updateStatus(`Low conf: ${Math.round(ppl[0].score*100)}%`);return ppl;}
+      const rel=['backpack','handbag','suitcase','tie','bicycle','motorcycle','chair','couch','dining table','sports ball'];
+      const proxy = preds.find(p=>rel.includes(p.class)&&p.score>=0.5);
+      if(proxy){
+        updateStatus(`Proxy: ${proxy.class}`);
+        return [{...proxy,class:'person',bbox:[...proxy.bbox]}];
+      }
+      return [];
+    }
+
+    function track(x,y,w,h,vw,vh){
+      lastDet={bbox:[x,y,w,h]};framesMem=0;
+      if(showBoxes){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);}
+      const cx=x+w/2, cy=y+h/2+(h*vOffset);
+      const nx=Math.max(0,Math.min(1,cx/vw)), ny=Math.max(0,Math.min(1,cy/vh));
+      video.style.objectPosition = `${(nx*100).toFixed(1)}% ${(ny*100).toFixed(1)}%`;
+      if(cntT.checked) showCount(1);
+
+      if(winResize&&ipcRenderer){
+        let scale=parseFloat(zrange.value);
+        if(scaleWithDistance){
+          const ar=(w*h)/(vw*vh);
+          scale=Math.max(1.2,Math.min(2.2,2.2-(ar*80)));
+          zrange.value=scale;zval.textContent=scale.toFixed(1);
+        }
+        const pW=w*scale*padFactor, pH=h*scale*padFactor;
+        const sW=window.screen.width, sH=window.screen.height;
+        const f=Math.min(sW/vw,sH/vh);
+        const wx=(cx*f)-(pW*f/2), wy=(cy*f)-(pH*f/2);
+        targetBounds={
+          width: Math.max(320,pW*f),
+          height:Math.max(240,pH*f),
+          x: Math.max(0,Math.min(sW-pW*f,wx)),
+          y: Math.max(0,Math.min(sH-pH*f,wy))
+        };
+        if(currBounds){
+          ['x','y','width','height'].forEach(k=>{
+            currBounds[k]+=(targetBounds[k]-currBounds[k])*smoothF;
+          });
+          ipcRenderer.send('set-bounds',{
+            x:Math.round(currBounds.x),
+            y:Math.round(currBounds.y),
+            width:Math.round(currBounds.width),
+            height:Math.round(currBounds.height)
+          });
+        } else {
+          ipcRenderer.once('current-bounds',(_,b)=>currBounds=b);
+          ipcRenderer.send('get-current-bounds');
+        }
+      }
+
+      if(debugVis){
+        debugOV.innerHTML='';
+        const dot=document.createElement('div');
+        dot.style.cssText=`
+          position:absolute; top:${ny*100}%; left:${nx*100}%;
+          width:20px;height:20px;margin:-10px;
+          border:2px solid #fff;border-radius:50%;
+          background:rgba(255,255,255,0.3);
+        `;
+        debugOV.appendChild(dot);
+      }
+
+      updateStatus(`cx=${Math.round(cx)}, cy=${Math.round(cy)}`);
+    }
+
+    async function initModel(){
+      updateStatus('Loading model…');
+      model=await cocoSsd.load();
+      loaded=true;
+      updateStatus('Model loaded, detecting…');
+      startDetection();
+    }
+
+    function startDetection(){
+      if(loopID) clearInterval(loopID);
+      loopID=setInterval(async ()=>{
+        if(video.paused||video.ended||!loaded) return;
+        canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.clearRect(0,0,canvas.width,canvas.height);
+        const vwW=video.videoWidth,vwH=video.videoHeight;
+        const padX=Math.round(vwW*0.1),padY=Math.round(vwH*0.1);
+        detCanvas.width=vwW+padX*2;detCanvas.height=vwH+padY*2;
+        detCtx.fillStyle='black';detCtx.fillRect(0,0,detCanvas.width,detCanvas.height);
+        detCtx.drawImage(video,padX,padY,vwW,vwH);
+        const raw=await model.detect(detCanvas);
+        const preds=raw.map(p=>{p.bbox[0]-=padX;p.bbox[1]-=padY;return p;});
+        const people=enhancedDetect(preds);
+        let found=false;
+        if(people.length){
+          found=true;
+          handleGain();
+          people.sort((a,b)=>b.bbox[2]*b.bbox[3]-a.bbox[2]*a.bbox[3]);
+          const [x,y,w,h]=people[0].bbox;
+          track(x,y,w,h,vwW,vwH);
+        }
+        else if(lastDet&&framesMem<maxMem){
+          framesMem++;
+          found=true;
+          handleGain();
+          const [x,y,w,h]=lastDet.bbox;
+          if(showBoxes){ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);}
+          track(x,y,w,h,vwW,vwH);
+        }
+        else {
+          if(prevDetected) handleNoDet();
+        }
+        prevDetected=found;
+      },100);
+    }
+
+    // Playback & UI wiring
+    playBtn.addEventListener('click',()=>{
+      video.play().then(()=>{
+        ppBtn.textContent='❚❚';
+        overlay.style.display='none';
+        progBar.max=video.duration;
+        initModel();
+      }).catch(e=>{console.error(e);updateStatus('Play error');});
+    });
+    ppBtn.addEventListener('click',()=>{
+      if(video.paused) video.play(); else video.pause();
+      ppBtn.textContent=video.paused?'▶':'❚❚';
+    });
+    video.addEventListener('dblclick',()=>ppBtn.click());
+    video.addEventListener('loadedmetadata',()=>progBar.max=video.duration);
+    video.addEventListener('timeupdate',()=>progBar.value=video.currentTime);
+    progBar.addEventListener('input',()=>video.currentTime=progBar.value);
+
+    // Change video
+    changeBtn.addEventListener('click',()=>ipcRenderer.send('open-video-dialog'));
+    ipcRenderer.on('change-video',(_,p)=>{
+      const old=video.querySelector('source'); if(old) old.remove();
+      const src=document.createElement('source');
+      src.src=p;
+      const ext=path.extname(p).toLowerCase();
+      src.type = ext==='.webm'?'video/webm':ext==='.ogg'?'video/ogg':ext==='.mov'?'video/quicktime':'video/mp4';
+      video.appendChild(src);
+      video.load();
+      overlay.style.display='flex';
+      lastDet=null;framesMem=0;
+      updateStatus(`Loaded: ${path.basename(p)}`);
+    });
+
+    // Panel toggle
+    toggleBtn.addEventListener('click',()=>panel.style.display=panel.style.display==='block'?'none':'block');
+
+    // Control listeners
+    brange.addEventListener('input',()=>{bval.textContent=brange.value;applyFilters();});
+    crange.addEventListener('input',()=>{cval.textContent=crange.value;applyFilters();});
+    vrange.addEventListener('input',()=>{vval.textContent=`${Math.round(vrange.value*100)}%`;video.volume=vrange.value;});
+    confr.addEventListener('input',()=>{confThresh=parseFloat(confr.value);confv.textContent=`${Math.round(confThresh*100)}%`;});
+    scaleT.addEventListener('change',()=>scaleWithDistance=scaleT.checked);
+    enhT.addEventListener('change',()=>enhanced=enhT.checked);
+    bboxT.addEventListener('change',()=>{
+      showBoxes=bboxT.checked;
+      if(!showBoxes)ctx.clearRect(0,0,canvas.width,canvas.height);
+    });
+    resT.addEventListener('change',()=>winResize=resT.checked);
+    dbgT.addEventListener('change',()=>{debugVis=dbgT.checked;if(!debugVis)debugOV.innerHTML='';});
+    statT.addEventListener('change',()=>statusEl.style.display=statT.checked?'block':'none');
+    cntT.addEventListener('change',()=>{});
+    winFT.addEventListener('change',()=>{});
+    srange.addEventListener('input',()=>{smoothF=parseFloat(srange.value);sval.textContent=smoothF.toFixed(2);});
+    zrange.addEventListener('input',()=>zval.textContent=zrange.value);
+    mrange.addEventListener('input',()=>{maxMem=parseInt(mrange.value,10);mval.textContent=maxMem;});
+    drange.addEventListener('input',()=>{smoothF=parseFloat(drange.value);dval.textContent=smoothF.toFixed(2);});
+    vOffsetR.addEventListener('input',()=>{
+      vOffset=parseFloat(vOffsetR.value);
+      voffv.textContent=vOffset.toFixed(2);
+    });
+    padR.addEventListener('input',()=>{
+      padFactor=parseFloat(padR.value);
+      padv.textContent=padFactor.toFixed(1);
+    });
+
+    // Header drag
+    document.getElementById('header').addEventListener('mousedown',e=>{
+      let drag=true;
+      const start={x:e.screenX,y:e.screenY};
+      ipcRenderer.send('drag-start',start);
+      const mm=ev=>{ if(!drag)return;ipcRenderer.send('drag-move',{dx:ev.screenX-start.x,dy:ev.screenY-start.y}); };
+      const mu=()=>{drag=false;ipcRenderer.send('drag-end');window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);};
+      window.addEventListener('mousemove',mm);
+      window.addEventListener('mouseup',mu);
+    });
+
+    // Init
+    applyFilters();
+    updateStatus('Ready – click Play to start tracking');
+    if(new URLSearchParams(window.location.search).get('autostart')==='true'){
+      setTimeout(()=>playBtn.click(),500);
+    }
+  </script>
+</body>
+</html>
