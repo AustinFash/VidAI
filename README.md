@@ -25,9 +25,11 @@
 ## 🎬 Demo
 
 <p align="center">
-  <img src="https://youtu.be/L9mwalujm4U" alt="VidAI Demo" width="600">
+  <a href="https://youtu.be/L9mwalujm4U">
+    <img src="https://img.youtube.com/vi/L9mwalujm4U/maxresdefault.jpg" alt="VidAI Demo Video" width="600">
+  </a>
   <br>
-  <em>VidAI automatically tracking and focusing on subjects</em>
+  <em>Click to watch VidAI automatically tracking and focusing on subjects</em>
 </p>
 
 ## 🎯 Project Overview
