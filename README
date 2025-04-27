@@ -1,0 +1,126 @@
+# VidAI - Intelligent Video Player with AI-Powered Object Tracking
+
+VidAI is an innovative video player that uses artificial intelligence to automatically detect and track objects in real-time, creating a dynamic viewing experience by adjusting the frame to focus on the main subjects in the video.
+
+## Team Members
+- William DeIasi
+- Austin Fash
+- Martino Volcy
+- Owen Witt
+- Brandon Zheng
+
+**Advisor:** Professor Minning Zhu
+
+## Project Overview
+
+VidAI revolutionizes the traditional video viewing experience by using computer vision and machine learning to automatically track objects and adjust the video frame in real-time. Unlike standard video players that offer static playback, VidAI creates an immersive experience by dynamically focusing on the most important elements within each frame.
+
+## Key Features
+
+- **Real-time Object Detection**: Uses COCO-SSD model for person detection with configurable confidence thresholds
+- **Smart Frame Tracking**: Automatically adjusts video frame position to follow detected subjects
+- **Dynamic Window Resizing**: Adapts window size based on subject position and distance
+- **Enhanced Detection Algorithm**: Falls back to proxy objects (backpacks, chairs, etc.) when people aren't detected
+- **Configurable Settings**: Extensive control panel for fine-tuning detection parameters, tracking smoothness, and visual adjustments
+- **Debug Visualization**: Optional overlay showing detection boxes and tracking points
+
+## Technologies Used
+
+- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+- **AI/ML**: TensorFlow.js, COCO-SSD model
+- **Framework**: Electron (for desktop application)
+- **Video Processing**: HTML5 Canvas API
+
+## How It Works
+
+1. **Video Input**: Accepts various video formats (mp4, webm, ogg, mov)
+2. **Object Detection**: Uses COCO-SSD model to detect people and other objects in each frame
+3. **Tracking Logic**: Calculates center points of detected objects and adjusts video position
+4. **Dynamic Adjustment**: Frame position and window size adapt based on object location
+5. **Fallback System**: Uses proxy objects when primary targets aren't detected
+
+## Control Panel Features
+
+### Video Controls
+- Brightness and contrast adjustment
+- Volume control
+- Video playback controls
+
+### Detection Settings
+- Detection confidence threshold
+- Scale with distance toggle
+- Enhanced detection mode
+- Bounding box visualization
+
+### Tracking Settings
+- Tracking smoothness
+- Base zoom level
+- Detection memory (frame persistence)
+- Motion stability
+- Vertical offset
+- Resize padding
+
+## Installation and Usage
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/vidai.git
+```
+
+2. Install dependencies (if using Electron)
+```bash
+npm install electron
+```
+
+3. Run the application
+```bash
+electron .
+```
+
+Or open `index.html` directly in a modern browser for web version.
+
+## Project Architecture
+
+```
+VidAI/
+├── index.html          # Main application file
+├── samples/           # Sample video files
+│   └── sample.mp4
+├── README.md          # Project documentation
+└── electron files...  # Electron wrapper (if applicable)
+```
+
+## Future Improvements
+
+- Integration with reinforcement learning for smoother transitions
+- Support for multiple object tracking
+- Cloud-based processing for better performance
+- Mobile application development
+- Advanced filtering and post-processing effects
+
+## Research Contributions
+
+This project explores novel approaches to:
+- Real-time object detection in video streams
+- Dynamic frame adjustment algorithms
+- User engagement enhancement through AI
+- Computer vision applications in media consumption
+
+## Acknowledgments
+
+Special thanks to:
+- Professor Minning Zhu for guidance and support
+- The TensorFlow.js and COCO-SSD teams for their open-source models
+- Rutgers University School of Engineering
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Demo
+
+To see VidAI in action, load a video and watch as the player automatically tracks and focuses on the main subjects within the frame. Adjust settings through the control panel to customize your viewing experience.
+
+---
+
+Developed as part of the Rutgers University Senior Design Project (SP25-17)
