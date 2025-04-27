@@ -25,7 +25,7 @@
 ## 🎬 Demo
 
 <p align="center">
-  <img src="demo.gif" alt="VidAI Demo" width="600">
+  <img src="https://youtu.be/L9mwalujm4U" alt="VidAI Demo" width="600">
   <br>
   <em>VidAI automatically tracking and focusing on subjects</em>
 </p>
