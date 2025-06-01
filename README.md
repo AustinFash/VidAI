@@ -161,11 +161,11 @@ graph LR
 
 | Name | Role | GitHub |
 |------|------|--------|
-| William DeIasi | Developer | [@username](https://github.com/username) |
-| Austin Fash | Developer | [@username](https://github.com/username) |
-| Martino Volcy | Developer | [@username](https://github.com/username) |
-| Owen Witt | Developer | [@username](https://github.com/username) |
-| Brandon Zheng | Developer | [@username](https://github.com/username) |
+| William DeIasi | Developer |
+| Austin Fash | Developer | [@austinfash](https://github.com/austinfash) |
+| Martino Volcy | Developer | [@martinovolcy](https://github.com/martinovolcy) |
+| Owen Witt | Developer | 
+| Brandon Zheng | Developer |
 
 **Advisor**: Professor Minning Zhu
 
